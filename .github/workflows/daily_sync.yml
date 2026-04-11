@@ -1,0 +1,71 @@
+name: D2L to OneDrive Sync
+
+on:
+  schedule:
+    # 8am EST (UTC-5). Note: becomes 9am EDT (UTC-4) during daylight saving time.
+    # Change to '0 12 * * *' in summer months if you want consistent 8am EDT.
+    - cron: '0 13 * * *'
+
+  # Allow manual triggering from the GitHub Actions tab
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run mode — show what would be synced without uploading'
+        type: boolean
+        default: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60  # Prevent runaway jobs from consuming free tier minutes
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Restore state.json from cache (tracks previously synced files)
+      # Using split restore/save actions so we can always save (if: always()) below.
+      - name: Restore sync state cache
+        uses: actions/cache/restore@v4
+        with:
+          path: config/state.json
+          # Exact key uses run_id so each run creates a new cache entry
+          key: d2l-sync-state-${{ runner.os }}-${{ github.run_id }}
+          # Fallback: use the most recent state from any previous run
+          restore-keys: |
+            d2l-sync-state-${{ runner.os }}-
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      # Playwright browsers are NOT cached with pip — install separately
+      - name: Install Playwright browsers
+        run: playwright install chromium --with-deps
+
+      - name: Run sync
+        env:
+          D2L_EMAIL: ${{ secrets.D2L_EMAIL }}
+          D2L_PASSWORD: ${{ secrets.D2L_PASSWORD }}
+          D2L_SESSION_COOKIE: ${{ secrets.D2L_SESSION_COOKIE }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ONEDRIVE_USER_EMAIL: ${{ secrets.ONEDRIVE_USER_EMAIL }}
+          # workflow_dispatch passes string "true"/"false"; schedule passes empty string → defaults to "false"
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+        run: python scripts/sync.py
+
+      # CRITICAL: Always save state, even if the sync partially failed.
+      # This prevents already-uploaded files from being re-uploaded on the next run.
+      - name: Save sync state cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: config/state.json
+          key: d2l-sync-state-${{ runner.os }}-${{ github.run_id }}

@@ -1,0 +1,25 @@
+{
+  "_comment_courses": "List specific course names to sync (partial match, case-insensitive). Example: ['CS341', 'MATH237']. Leave empty [] to sync ALL enrolled courses.",
+  "courses_filter": [],
+
+  "_comment_extensions": "Only download files with these extensions. Example: ['.pdf', '.pptx']. Leave empty [] to allow ALL file types.",
+  "allowed_extensions": [".pdf", ".pptx", ".ppt", ".docx", ".doc", ".xlsx", ".xls", ".zip", ".mp4", ".mov"],
+
+  "_comment_exclude_folders": "Skip any D2L module/folder whose name contains one of these strings (case-insensitive). Example: ['Archive', 'Old Material'].",
+  "exclude_folders": [],
+
+  "_comment_dry_run": "Set to true to see WHAT WOULD BE synced without actually downloading or uploading anything. Great for a first test run.",
+  "dry_run": false,
+
+  "_comment_overwrite": "Set to true to re-upload files even if they are already recorded in state.json. Useful if you want to force-refresh everything.",
+  "overwrite": false,
+
+  "_comment_onedrive_root_folder": "Top-level folder name created in your OneDrive. Avoid special characters like / \\ : * ? \" < > |",
+  "onedrive_root_folder": "D2L Sync",
+
+  "_comment_temp_dir": "Local directory for temporarily storing downloaded files before they are uploaded to OneDrive. Cleaned up automatically.",
+  "temp_dir": "/tmp/d2l_sync",
+
+  "_comment_max_file_mb": "Skip files larger than this size in megabytes. Protects against filling GitHub Actions runner disk (typically 14GB). Set to 0 to disable the limit.",
+  "max_file_mb": 500
+}
