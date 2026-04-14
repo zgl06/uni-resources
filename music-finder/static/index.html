@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Music Finder</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f0f13;
+      color: #e8e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #a78bfa, #60a5fa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    header p {
+      margin-top: 0.5rem;
+      color: #9090aa;
+      font-size: 0.95rem;
+    }
+
+    .card {
+      background: #18181f;
+      border: 1px solid #2a2a3a;
+      border-radius: 14px;
+      padding: 1.75rem;
+      width: 100%;
+      max-width: 640px;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    input[type="url"] {
+      flex: 1;
+      background: #0f0f13;
+      border: 1px solid #2a2a3a;
+      border-radius: 8px;
+      padding: 0.65rem 1rem;
+      color: #e8e8f0;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="url"]:focus { border-color: #7c5cfc; }
+    input[type="url"]::placeholder { color: #55556a; }
+
+    button#detect-btn {
+      background: linear-gradient(135deg, #7c5cfc, #4f8ef7);
+      border: none;
+      border-radius: 8px;
+      padding: 0.65rem 1.25rem;
+      color: #fff;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.2s;
+    }
+
+    button#detect-btn:hover { opacity: 0.85; }
+    button#detect-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .hint {
+      margin-top: 0.6rem;
+      font-size: 0.8rem;
+      color: #55556a;
+    }
+
+    /* Spinner */
+    #loading {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      padding: 2.5rem 0 1rem;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #2a2a3a;
+      border-top-color: #7c5cfc;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #loading p { color: #9090aa; font-size: 0.9rem; }
+
+    /* Error */
+    #error-box {
+      display: none;
+      margin-top: 1.25rem;
+      background: #2a1018;
+      border: 1px solid #6b2030;
+      border-radius: 8px;
+      padding: 0.9rem 1rem;
+      color: #f87171;
+      font-size: 0.9rem;
+    }
+
+    /* Results */
+    #results-section { display: none; margin-top: 1.5rem; }
+
+    #video-title {
+      font-size: 0.8rem;
+      color: #7070aa;
+      margin-bottom: 1rem;
+    }
+
+    #video-title span { color: #c0c0e0; font-style: italic; }
+
+    .song-list { display: flex; flex-direction: column; gap: 0.85rem; }
+
+    .song-card {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background: #0f0f13;
+      border: 1px solid #2a2a3a;
+      border-radius: 10px;
+      padding: 0.85rem;
+      transition: border-color 0.2s;
+    }
+
+    .song-card:hover { border-color: #444466; }
+
+    .cover {
+      width: 60px;
+      height: 60px;
+      border-radius: 6px;
+      object-fit: cover;
+      background: #2a2a3a;
+      flex-shrink: 0;
+    }
+
+    .cover-placeholder {
+      width: 60px;
+      height: 60px;
+      border-radius: 6px;
+      background: #2a2a3a;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+
+    .song-info { flex: 1; min-width: 0; }
+
+    .song-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .song-artist {
+      color: #9090aa;
+      font-size: 0.85rem;
+      margin-top: 0.2rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .song-album {
+      color: #66667a;
+      font-size: 0.78rem;
+      margin-top: 0.15rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .song-meta {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.5rem;
+      flex-shrink: 0;
+    }
+
+    .timestamp {
+      background: #2a2a3a;
+      border-radius: 5px;
+      padding: 0.2rem 0.5rem;
+      font-size: 0.75rem;
+      color: #9090aa;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .spotify-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: #1DB954;
+      border: none;
+      border-radius: 20px;
+      padding: 0.3rem 0.75rem;
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .spotify-btn:hover { opacity: 0.85; }
+
+    /* Spotify icon SVG */
+    .spotify-icon {
+      width: 14px;
+      height: 14px;
+      fill: #fff;
+    }
+
+    /* Empty state */
+    #empty-state {
+      display: none;
+      text-align: center;
+      padding: 2rem 0 0.5rem;
+      color: #55556a;
+    }
+
+    #empty-state .icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Music Finder</h1>
+  <p>Paste a YouTube, Instagram, or TikTok link to identify all the songs in the video.</p>
+</header>
+
+<div class="card">
+  <div class="input-row">
+    <input type="url" id="url-input" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off" />
+    <button id="detect-btn">Detect</button>
+  </div>
+  <p class="hint">Supports YouTube, Instagram Reels, TikTok, and 1,700+ other sites.</p>
+
+  <!-- Loading -->
+  <div id="loading">
+    <div class="spinner"></div>
+    <p>Downloading and analysing audio&hellip; this can take a minute.</p>
+  </div>
+
+  <!-- Error -->
+  <div id="error-box"></div>
+
+  <!-- Results -->
+  <div id="results-section">
+    <p id="video-title"></p>
+    <div class="song-list" id="song-list"></div>
+  </div>
+
+  <!-- Empty state -->
+  <div id="empty-state">
+    <div class="icon">🎵</div>
+    <p>No songs could be identified in this video.</p>
+  </div>
+</div>
+
+<script>
+  const urlInput   = document.getElementById('url-input');
+  const detectBtn  = document.getElementById('detect-btn');
+  const loading    = document.getElementById('loading');
+  const errorBox   = document.getElementById('error-box');
+  const resultsSection = document.getElementById('results-section');
+  const songList   = document.getElementById('song-list');
+  const videoTitle = document.getElementById('video-title');
+  const emptyState = document.getElementById('empty-state');
+
+  function fmtTime(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = String(seconds % 60).padStart(2, '0');
+    return `${m}:${s}`;
+  }
+
+  function reset() {
+    loading.style.display = 'none';
+    errorBox.style.display = 'none';
+    resultsSection.style.display = 'none';
+    emptyState.style.display = 'none';
+    songList.innerHTML = '';
+    videoTitle.innerHTML = '';
+  }
+
+  function showError(msg) {
+    errorBox.textContent = msg;
+    errorBox.style.display = 'block';
+  }
+
+  function buildSongCard(song) {
+    const card = document.createElement('div');
+    card.className = 'song-card';
+
+    // Cover art
+    if (song.cover_url) {
+      const img = document.createElement('img');
+      img.className = 'cover';
+      img.src = song.cover_url;
+      img.alt = song.title;
+      img.onerror = () => img.replaceWith(placeholder());
+      card.appendChild(img);
+    } else {
+      card.appendChild(placeholder());
+    }
+
+    // Info
+    const info = document.createElement('div');
+    info.className = 'song-info';
+    info.innerHTML = `
+      <div class="song-title">${esc(song.title)}</div>
+      <div class="song-artist">${esc(song.artist || '—')}</div>
+      ${song.album ? `<div class="song-album">${esc(song.album)}</div>` : ''}
+    `;
+    card.appendChild(info);
+
+    // Right-side meta
+    const meta = document.createElement('div');
+    meta.className = 'song-meta';
+
+    const ts = document.createElement('span');
+    ts.className = 'timestamp';
+    ts.textContent = fmtTime(song.timestamp_s);
+    meta.appendChild(ts);
+
+    if (song.spotify_url) {
+      const link = document.createElement('a');
+      link.className = 'spotify-btn';
+      link.href = song.spotify_url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.innerHTML = `
+        <svg class="spotify-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.516 17.313c-.216.356-.672.468-1.028.252-2.816-1.72-6.36-2.108-10.534-1.156-.402.092-.804-.156-.896-.558-.092-.4.156-.804.558-.896 4.568-1.044 8.488-.596 11.648 1.336.356.216.468.672.252 1.022zm1.472-3.276c-.272.44-.848.58-1.288.308-3.22-1.98-8.128-2.552-11.94-1.396-.492.148-1.008-.128-1.156-.616-.148-.492.128-1.008.616-1.156 4.352-1.32 9.76-.68 13.46 1.588.44.272.58.848.308 1.272zm.128-3.408c-3.864-2.296-10.24-2.508-13.928-1.388-.592.18-1.216-.156-1.396-.748-.18-.592.156-1.216.748-1.396 4.24-1.288 11.284-1.04 15.736 1.608.532.316.708 1.004.392 1.536-.316.532-1.004.708-1.552.388z"/>
+        </svg>
+        Spotify
+      `;
+      meta.appendChild(link);
+    }
+
+    card.appendChild(meta);
+    return card;
+  }
+
+  function placeholder() {
+    const d = document.createElement('div');
+    d.className = 'cover-placeholder';
+    d.textContent = '🎵';
+    return d;
+  }
+
+  function esc(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  async function detect() {
+    const url = urlInput.value.trim();
+    if (!url) { urlInput.focus(); return; }
+
+    reset();
+    detectBtn.disabled = true;
+    loading.style.display = 'flex';
+
+    try {
+      const resp = await fetch('/api/detect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+
+      const data = await resp.json();
+
+      loading.style.display = 'none';
+
+      if (data.error) {
+        showError(data.error);
+        return;
+      }
+
+      if (data.video_title) {
+        videoTitle.innerHTML = `Results for: <span>${esc(data.video_title)}</span>`;
+      }
+
+      if (!data.results || data.results.length === 0) {
+        emptyState.style.display = 'block';
+        return;
+      }
+
+      resultsSection.style.display = 'block';
+      for (const song of data.results) {
+        songList.appendChild(buildSongCard(song));
+      }
+    } catch (err) {
+      loading.style.display = 'none';
+      showError('Network error — make sure the server is running.');
+    } finally {
+      detectBtn.disabled = false;
+    }
+  }
+
+  detectBtn.addEventListener('click', detect);
+  urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') detect(); });
+</script>
+</body>
+</html>

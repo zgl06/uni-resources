@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+yt-dlp
+pydub
+shazamio
+httpx
+python-multipart
